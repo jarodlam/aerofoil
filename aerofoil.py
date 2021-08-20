@@ -59,6 +59,8 @@ class MainFrame(ttk.Frame):
         
         xa, ya, xc, yc, xmid, pd, L = lift(c, t, m, p, aoa, vinf)
         
+        self.aerofoil.update_plot(xa, ya, xc, yc)
+        
     def reset(self):
         self.params.fieldChordLen.set_value(10)
         self.params.fieldThickness.set_value(20)
@@ -171,15 +173,25 @@ class AerofoilFrame(ttk.Frame):
         self.setup_gui()
         
     def setup_gui(self):
-        self.figure = plt.Figure()
-        t = np.arange(0, 3, .01)
-        ax = self.figure.add_subplot()
-        ax.plot(t, 2 * np.sin(2 * np.pi * t))
-        ax.set_title("Aerofoil Design")
+        self.figure, self.ax = plt.subplots()
+        self.setup_plot()
         
         self.canvas = FigureCanvasTkAgg(self.figure, master=self)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+    
+    def update_plot(self, xa, ya, xc, yc):
+        self.ax.clear()
+        self.ax.plot(xa, ya, "b", label="Aerofoil surface", linewidth=1)
+        self.ax.plot(xc, yc, "r", label="Mean camber line", linewidth=1)
+        self.setup_plot()
+        self.canvas.draw()
+    
+    def setup_plot(self):
+        self.ax.set_title("Aerofoil Design")
+        self.ax.set_xlabel("x")
+        self.ax.set_ylabel("y")
+        self.ax.legend()
 
 def lift(chord, thickness, camber, camberposition, angleofattack, velocity):
     """
