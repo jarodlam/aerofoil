@@ -32,8 +32,8 @@ class MainFrame(ttk.Frame):
         self.pressure = PressureFrame(self.topFrame)
         self.pressure.pack(side=tk.LEFT, fill="both")
         
-        self.airfoil = AirfoilFrame(self.bottomFrame)
-        self.airfoil.pack(fill="x")
+        self.aerofoil = AerofoilFrame(self.bottomFrame)
+        self.aerofoil.pack(fill="x")
         
         self.topFrame.pack(fill="both")
         self.bottomFrame.pack(fill="both", expand=True)
@@ -127,8 +127,8 @@ class PressureFrame(ttk.Frame):
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-class AirfoilFrame(ttk.Frame):
-    """Airfoil profile graph at bottom"""
+class AerofoilFrame(ttk.Frame):
+    """Aerofoil profile graph at bottom"""
     
     def __init__(self, master):
         self.master = master
@@ -141,7 +141,7 @@ class AirfoilFrame(ttk.Frame):
         t = np.arange(0, 3, .01)
         ax = self.figure.add_subplot()
         ax.plot(t, 2 * np.sin(2 * np.pi * t))
-        ax.set_title("Airfoil Design")
+        ax.set_title("Aerofoil Design")
         
         self.canvas = FigureCanvasTkAgg(self.figure, master=self)
         self.canvas.draw()
@@ -150,7 +150,7 @@ class AirfoilFrame(ttk.Frame):
 if __name__ == "__main__":
     # Set up Tk instance
     root = tk.Tk()
-    root.title("Airfoil GUI")
+    root.title("Aerofoil GUI")
     root.geometry('800x600')
     root.minsize(800, 600)
     root.maxsize(800, 600)
