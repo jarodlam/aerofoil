@@ -21,8 +21,6 @@ pyinstaller --onefile --windowed --icon icon.ico aerofoil.py
 """
 
 # TODO:
-# - Polish GUI
-# - Test on Windows
 # - Data validation
 
 import tkinter as tk
@@ -50,7 +48,7 @@ class MainFrame(ttk.Frame):
         self.params.pack(side=tk.LEFT, fill="both", padx=10, ipadx=10, pady=10)
         
         self.pressure = PressureFrame(self.topFrame)
-        self.pressure.pack(side=tk.LEFT, fill="both")
+        self.pressure.pack(side=tk.LEFT, fill="both", expand=True)
         
         self.aerofoil = AerofoilFrame(self.bottomFrame)
         self.aerofoil.pack(fill="x")
@@ -152,30 +150,30 @@ class ParametersFrame(ttk.Frame):
         
         self.fieldsFrame = ttk.Frame(self)
         self.fieldChordLen = ParametersField(self.fieldsFrame, "Chord length", "m")
-        self.fieldChordLen.pack(expand=True)
+        self.fieldChordLen.pack(expand=True, pady=5)
         self.fieldThickness = ParametersField(self.fieldsFrame, "Thickness", "%")
-        self.fieldThickness.pack(expand=True)
+        self.fieldThickness.pack(expand=True, pady=5)
         self.fieldMaxCamber = ParametersField(self.fieldsFrame, "Maximum camber", "%")
-        self.fieldMaxCamber.pack(expand=True)
+        self.fieldMaxCamber.pack(expand=True, pady=5)
         self.fieldCamberPos = ParametersField(self.fieldsFrame, "Camber position", "%")
-        self.fieldCamberPos.pack(expand=True)
+        self.fieldCamberPos.pack(expand=True, pady=5)
         self.fieldAngleAttack = ParametersField(self.fieldsFrame, "Angle of attack", "°")
-        self.fieldAngleAttack.pack(expand=True)
+        self.fieldAngleAttack.pack(expand=True, pady=5)
         self.fieldVelocity = ParametersField(self.fieldsFrame, "Velocity", "km/h")
-        self.fieldVelocity.pack(expand=True)
+        self.fieldVelocity.pack(expand=True, pady=5)
         self.fieldsFrame.grid(row=1, column=0, sticky=tk.NSEW)
         
         self.buttonsFrame = ttk.Frame(self)
         self.buttonCalculate = ttk.Button(self.buttonsFrame, text="Calculate", state=tk.NORMAL, default=tk.ACTIVE, takefocus = 0, command=calculateCallback)
-        self.buttonCalculate.pack(side=tk.LEFT)
+        self.buttonCalculate.pack(side=tk.LEFT, pady=5, expand=True)
         self.buttonReset = ttk.Button(self.buttonsFrame, text="Reset", state=tk.NORMAL, takefocus = 0, command=resetCallback)
-        self.buttonReset.pack(side=tk.LEFT)
+        self.buttonReset.pack(side=tk.LEFT, pady=5, expand=True)
         self.buttonOutput = ttk.Button(self.buttonsFrame, text="Save", state=tk.DISABLED, takefocus = 0, command=outputCallback)
-        self.buttonOutput.pack(side=tk.LEFT)
-        self.buttonsFrame.grid(row=2, column=0)
+        self.buttonOutput.pack(side=tk.LEFT, pady=5, expand=True)
+        self.buttonsFrame.grid(row=2, column=0, sticky="nsew")
         
         self.totalForce = ttk.Label(self, text="Total force: ")
-        self.totalForce.grid(row=3, column=0, sticky="nsew")
+        self.totalForce.grid(row=3, column=0, sticky="nsew", pady=5)
     
     def enable_output_button(self):
         self.buttonOutput["state"] = tk.NORMAL
@@ -209,7 +207,7 @@ class ParametersField(ttk.Frame):
         self.entry = ttk.Entry(self, width=5)
         self.entry.pack(side=tk.LEFT)
         
-        self.unit = ttk.Label(self, text=self.unit, width=4)
+        self.unit = ttk.Label(self, text=self.unit, width=5)
         self.unit.pack(side=tk.LEFT)
     
     def get_value(self):
@@ -238,7 +236,7 @@ class PressureFrame(ttk.Frame):
     
     def setup_plot(self):
         self.ax.set_title("Pressure distribution")
-        self.ax.set_xlabel("x")
+        self.ax.set_xlabel("x (m)")
         self.ax.set_ylabel("Pressure (kPa)")
         self.ax.legend()
     
@@ -274,8 +272,9 @@ class AerofoilFrame(ttk.Frame):
     
     def setup_plot(self):
         self.ax.set_title("Aerofoil design")
-        self.ax.set_xlabel("x")
-        self.ax.set_ylabel("y")
+        self.ax.set_xlabel("x (m)")
+        self.ax.set_ylabel("y (m)")
+        self.figure.subplots_adjust(bottom=0.2)
         self.ax.legend()
     
     def update_plot(self, xa, ya, xc, yc):
@@ -415,8 +414,8 @@ if __name__ == "__main__":
     # Set up Tk instance
     root = tk.Tk()
     root.title("Aerofoil GUI")
-    root.geometry('800x600')
-    root.minsize(800, 600)
+    root.geometry('800x800')
+    root.minsize(800, 800)
 
     # Create main frame
     mainFrame = MainFrame(root)
