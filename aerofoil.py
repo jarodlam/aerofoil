@@ -56,6 +56,9 @@ class MainFrame(ttk.Frame):
         self.reset()
         
     def calculate(self):
+        if not self.params.all_fields_are_valid():
+            return
+        
         # Get all parameters from text boxes
         c = self.params.fieldChordLen.get_value()
         t =  self.params.fieldThickness.get_value()
@@ -141,17 +144,17 @@ class ParametersFrame(ttk.Frame):
          
     def setup_gui(self, calculateCallback, resetCallback, outputCallback):
         self.fieldsFrame = ttk.LabelFrame(self, text="Parameters")
-        self.fieldChordLen = ParametersField(self.fieldsFrame, "Chord length", "m")
+        self.fieldChordLen = ParametersField(self.fieldsFrame, "Chord length (0.01-100)", "m", 0.01, 100)
         self.fieldChordLen.pack(expand=True, pady=5)
-        self.fieldThickness = ParametersField(self.fieldsFrame, "Thickness", "%")
+        self.fieldThickness = ParametersField(self.fieldsFrame, "Thickness (2-25)", "%", 2, 25)
         self.fieldThickness.pack(expand=True, pady=5)
-        self.fieldMaxCamber = ParametersField(self.fieldsFrame, "Maximum camber", "%")
+        self.fieldMaxCamber = ParametersField(self.fieldsFrame, "Maximum camber (0-25)", "%", 0, 25)
         self.fieldMaxCamber.pack(expand=True, pady=5)
-        self.fieldCamberPos = ParametersField(self.fieldsFrame, "Camber position", "%")
+        self.fieldCamberPos = ParametersField(self.fieldsFrame, "Camber position (0-100)", "%", 0, 100)
         self.fieldCamberPos.pack(expand=True, pady=5)
-        self.fieldAngleAttack = ParametersField(self.fieldsFrame, "Angle of attack", "°")
+        self.fieldAngleAttack = ParametersField(self.fieldsFrame, "Angle of attack (0-10)", "°", 0, 10)
         self.fieldAngleAttack.pack(expand=True, pady=5)
-        self.fieldVelocity = ParametersField(self.fieldsFrame, "Velocity", "km/h")
+        self.fieldVelocity = ParametersField(self.fieldsFrame, "Velocity (0.1-10000)", "km/h", 0.1, 10000)
         self.fieldVelocity.pack(expand=True, pady=5)
         self.fieldsFrame.grid(row=1, column=0, sticky=tk.NSEW)
         
@@ -177,26 +180,40 @@ class ParametersFrame(ttk.Frame):
             text = "Total force: " + "{:.0f}".format(newtons) + " N"
         
         self.totalForce["text"] = text
+    
+    def all_fields_are_valid(self):
+        return \
+            self.fieldChordLen.is_within_bounds() and \
+            self.fieldThickness.is_within_bounds() and \
+            self.fieldMaxCamber.is_within_bounds() and \
+            self.fieldCamberPos.is_within_bounds() and \
+            self.fieldAngleAttack.is_within_bounds() and \
+            self.fieldVelocity.is_within_bounds()
         
 class ParametersField(ttk.Frame):
     """A label, text field, and unit label"""
     
-    def __init__(self, master, label, unit):
+    def __init__(self, master, label, unit, minVal, maxVal):
         self.master = master
         ttk.Frame.__init__(self, master)
         
         self.label = label
         self.unit = unit
         self.setup_gui()
+        
+        self.minVal = minVal
+        self.maxVal = maxVal
     
     def setup_gui(self):
-        s = ttk.Style()
-        s.configure('TEntry', background='white')
+        self.s = ttk.Style()
+        self.styleName = self.label + ".TEntry"
+        self.s.configure(self.styleName, background='white')
         
-        self.label = ttk.Label(self, text=self.label, width=20)
+        self.label = ttk.Label(self, text=self.label, width=25)
         self.label.pack(side=tk.LEFT)
         
-        self.entry = ttk.Entry(self, width=5)
+        vcmd = (self.register(self.validate), '%P')
+        self.entry = ttk.Entry(self, width=5, style=self.styleName, validate="key", validatecommand=vcmd)
         self.entry.pack(side=tk.LEFT)
         
         self.unit = ttk.Label(self, text=self.unit, width=5)
@@ -208,6 +225,31 @@ class ParametersField(ttk.Frame):
     def set_value(self, value):
         self.entry.delete(0, tk.END)
         self.entry.insert(tk.END, value)
+
+    def validate(self, P):
+        """Validate input while user is typing"""
+        
+        # Allow blank field
+        if P == "":
+            self.set_entry_display_error(False)
+            return True
+        
+        # Check if is an integer
+        try:
+            value = int(P)
+            self.set_entry_display_error(not self.is_within_bounds(value))
+            return True
+        except ValueError:
+            return False
+    
+    def set_entry_display_error(self, error):
+        colour = "red" if error else "black"
+        self.s.configure(self.styleName, foreground=colour)
+    
+    def is_within_bounds(self, value=None):
+        if value is None:
+            value = self.get_value()
+        return value >= self.minVal and value <= self.maxVal
 
 class PressureFrame(ttk.Frame):
     """Pressure distribution graph in top-right"""
@@ -268,6 +310,7 @@ class AerofoilFrame(ttk.Frame):
         self.ax.set_ylabel("y (m)")
         self.figure.subplots_adjust(bottom=0.2)
         self.ax.legend()
+        self.ax.set_aspect('equal')
     
     def update_plot(self, xa, ya, xc, yc):
         self.ax.clear()
