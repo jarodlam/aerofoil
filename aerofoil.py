@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+ #!/usr/bin/env python3
 """Aerofoil pressure distribution visualisation tool
 
 Authors:
@@ -19,9 +19,6 @@ Requires Tkinter, NumPy, Matplotlib, and PyInstaller
 To compile into a distributable executable, run:
 pyinstaller --onefile --windowed --icon icon.ico aerofoil.py
 """
-
-# TODO:
-# - Data validation
 
 import tkinter as tk
 from tkinter import ttk
@@ -45,7 +42,7 @@ class MainFrame(ttk.Frame):
         self.bottomFrame = ttk.Frame(self)
         
         self.params = ParametersFrame(self.topFrame, self.calculate, self.reset, self.output)
-        self.params.pack(side=tk.LEFT, fill="both", padx=10, ipadx=10, pady=10)
+        self.params.pack(side=tk.LEFT, anchor=tk.N, fill="x", padx=10, pady=10)
         
         self.pressure = PressureFrame(self.topFrame)
         self.pressure.pack(side=tk.LEFT, fill="both", expand=True)
@@ -82,7 +79,7 @@ class MainFrame(ttk.Frame):
         self.pd = pd
         
         # Enable output button so we can export data (if not already enabled)
-        self.params.enable_output_button()
+        self.params.set_output_button_enable(True)
         
     def reset(self):
         """Reset all values to default state"""
@@ -93,6 +90,7 @@ class MainFrame(ttk.Frame):
         self.params.fieldCamberPos.set_value(60)
         self.params.fieldAngleAttack.set_value(5)
         self.params.fieldVelocity.set_value(200)
+        self.params.set_output_button_enable(False)
         self.params.set_total_force(None)
         self.aerofoil.reset_plot()
         self.pressure.reset_plot()
@@ -112,7 +110,7 @@ class MainFrame(ttk.Frame):
         )
         
         # User pressed Cancel
-        if filepath is None:
+        if not filepath:
             return
         
         # Open the file
@@ -137,18 +135,12 @@ class ParametersFrame(ttk.Frame):
     
     def __init__(self, master, calculateCallback, resetCallback, outputCallback):
         self.master = master
-        ttk.Frame.__init__(self, master, borderwidth = 1)
+        ttk.Frame.__init__(self, master)
         
         self.setup_gui(calculateCallback, resetCallback, outputCallback)
          
     def setup_gui(self, calculateCallback, resetCallback, outputCallback):
-        s = ttk.Style()
-        s.configure('Calculate.TButton', foreground='green')
-        
-        self.label1 = ttk.Label(self, text="Parameters")
-        self.label1.grid(row=0, column=0)
-        
-        self.fieldsFrame = ttk.Frame(self)
+        self.fieldsFrame = ttk.LabelFrame(self, text="Parameters")
         self.fieldChordLen = ParametersField(self.fieldsFrame, "Chord length", "m")
         self.fieldChordLen.pack(expand=True, pady=5)
         self.fieldThickness = ParametersField(self.fieldsFrame, "Thickness", "%")
@@ -175,8 +167,8 @@ class ParametersFrame(ttk.Frame):
         self.totalForce = ttk.Label(self, text="Total force: ")
         self.totalForce.grid(row=3, column=0, sticky="nsew", pady=5)
     
-    def enable_output_button(self):
-        self.buttonOutput["state"] = tk.NORMAL
+    def set_output_button_enable(self, enable):
+        self.buttonOutput["state"] = tk.NORMAL if enable else tk.DISABLED
         
     def set_total_force(self, newtons):
         if newtons is None:
@@ -413,7 +405,7 @@ def lift(chord, thickness, camber, camberposition, angleofattack, velocity):
 if __name__ == "__main__":
     # Set up Tk instance
     root = tk.Tk()
-    root.title("Aerofoil GUI")
+    root.title("QUT Young Accelerators aerofoil")
     root.geometry('800x800')
     root.minsize(800, 800)
 
