@@ -15,11 +15,19 @@ Calculates the shape of an NACA 4 series airfoil and the corresponding pressure
 distribution according to the input using a vortex panel method approach. 
 """
 
+# TODO:
+# - Output data to CSV
+# - Polish GUI
+# - Test on Windows
+# - Total force
+
 import tkinter as tk
 from tkinter import ttk
+from tkinter import filedialog
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import csv
 
 class MainFrame(ttk.Frame):
     """Master Tk frame"""
@@ -34,7 +42,7 @@ class MainFrame(ttk.Frame):
         self.topFrame = ttk.Frame(self)
         self.bottomFrame = ttk.Frame(self)
         
-        self.params = ParametersFrame(self.topFrame, self.calculate)
+        self.params = ParametersFrame(self.topFrame, self.calculate, self.reset, self.output)
         self.params.pack(side=tk.LEFT, fill="both", padx=10, ipadx=10, pady=10)
         
         self.pressure = PressureFrame(self.topFrame)
@@ -57,27 +65,73 @@ class MainFrame(ttk.Frame):
         aoa = self.params.fieldAngleAttack.get_value()
         vinf = self.params.fieldVelocity.get_value()
         
+        # Use lift function to calculate points
         xa, ya, xc, yc, xmid, pd, L = lift(c, t, m, p, aoa, vinf)
         
+        # Plot values in their respective frames
         self.aerofoil.update_plot(xa, ya, xc, yc)
         self.pressure.update_plot(xmid, pd)
         
+        # Save pressure for outputting
+        self.xmid = xmid
+        self.pd = pd
+        
+        # Enable output button so we can export data (if not already enabled)
+        self.params.enable_output_button()
+        
     def reset(self):
+        """Reset all values to default state"""
+        
         self.params.fieldChordLen.set_value(10)
         self.params.fieldThickness.set_value(20)
         self.params.fieldMaxCamber.set_value(20)
         self.params.fieldCamberPos.set_value(60)
         self.params.fieldAngleAttack.set_value(5)
         self.params.fieldVelocity.set_value(200)
+    
+    def output(self):
+        """Save pressure distribution to CSV
+        Format is: x | upper pressure | x | lower pressure
+        """
+        
+        # Open a "Save as" dialog box to get file name
+        filepath = tk.filedialog.asksaveasfilename(
+            confirmoverwrite=True,
+            defaultextension=".csv",
+            filetypes=[("CSV files", ".csv")],
+            initialfile="aerofoil.csv",
+            parent=self.master
+        )
+        
+        # User pressed Cancel
+        if filepath is None:
+            return
+        
+        # Open the file
+        with open(filepath, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile, dialect=csv.excel)
+            
+            # Write header
+            writer.writerow(["x", "Under aerofoil pressure (kPa)", "x", "Above aerofoil pressure (kPa)"])
+            
+            # Format data into columns
+            mid = int(np.ceil(len(self.xmid)/2))
+            xu, xa = self.xmid[mid:], self.xmid[0:mid]
+            pu, pa = self.pd[mid:], self.pd[0:mid]
+            data = np.transpose([xu, pu, xa, pa])
+            
+            # Write data to CSV
+            writer.writerows(data)
+            
 
 class ParametersFrame(ttk.Frame):
     """Parameters selection in top-left of window"""
     
-    def __init__(self, master, calculateCallback):
+    def __init__(self, master, calculateCallback, resetCallback, outputCallback):
         self.master = master
         ttk.Frame.__init__(self, master, borderwidth = 1)
         
-        self.setup_gui(calculateCallback)
+        self.setup_gui(calculateCallback, resetCallback, outputCallback)
          
     def setup_gui(self, calculateCallback, resetCallback, outputCallback):
         s = ttk.Style()
@@ -102,16 +156,19 @@ class ParametersFrame(ttk.Frame):
         self.fieldsFrame.grid(row=1, column=0, sticky=tk.NSEW)
         
         self.buttonsFrame = ttk.Frame(self)
-        self.buttonCalculate = ttk.Button(self.buttonsFrame, text="Calculate", default="active", takefocus = 0, command=calculateCallback)
+        self.buttonCalculate = ttk.Button(self.buttonsFrame, text="Calculate", state=tk.NORMAL, default=tk.ACTIVE, takefocus = 0, command=calculateCallback)
         self.buttonCalculate.pack(side=tk.LEFT)
-        self.buttonReset = ttk.Button(self.buttonsFrame, text="Reset", takefocus = 0)
+        self.buttonReset = ttk.Button(self.buttonsFrame, text="Reset", state=tk.NORMAL, takefocus = 0, command=resetCallback)
         self.buttonReset.pack(side=tk.LEFT)
-        self.buttonOutput = ttk.Button(self.buttonsFrame, text="Output Data", takefocus = 0)
+        self.buttonOutput = ttk.Button(self.buttonsFrame, text="Output data", state=tk.DISABLED, takefocus = 0, command=outputCallback)
         self.buttonOutput.pack(side=tk.LEFT)
         self.buttonsFrame.grid(row=2, column=0)
         
         self.totalForce = ttk.Label(self, text="Total force: ")
         self.totalForce.grid(row=3, column=0, sticky="nsew")
+    
+    def enable_output_button(self):
+        self.buttonOutput["state"] = tk.NORMAL
         
 class ParametersField(ttk.Frame):
     """A label, text field, and unit label"""
