@@ -13,6 +13,11 @@ workshop.
 
 Calculates the shape of an NACA 4 series airfoil and the corresponding pressure 
 distribution according to the input using a vortex panel method approach. 
+
+Requires Tkinter, NumPy, Matplotlib, and PyInstaller
+
+To compile into a distributable executable, run:
+pyinstaller --onefile --windowed --icon icon.ico aerofoil.py
 """
 
 # TODO:
