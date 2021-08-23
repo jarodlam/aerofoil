@@ -60,6 +60,7 @@ class MainFrame(ttk.Frame):
         xa, ya, xc, yc, xmid, pd, L = lift(c, t, m, p, aoa, vinf)
         
         self.aerofoil.update_plot(xa, ya, xc, yc)
+        self.pressure.update_plot(xmid, pd)
         
     def reset(self):
         self.params.fieldChordLen.set_value(10)
@@ -78,7 +79,7 @@ class ParametersFrame(ttk.Frame):
         
         self.setup_gui(calculateCallback)
          
-    def setup_gui(self, calculateCallback):
+    def setup_gui(self, calculateCallback, resetCallback, outputCallback):
         s = ttk.Style()
         s.configure('Calculate.TButton', foreground='green')
         
@@ -105,8 +106,8 @@ class ParametersFrame(ttk.Frame):
         self.buttonCalculate.pack(side=tk.LEFT)
         self.buttonReset = ttk.Button(self.buttonsFrame, text="Reset", takefocus = 0)
         self.buttonReset.pack(side=tk.LEFT)
-        self.buttonReset = ttk.Button(self.buttonsFrame, text="Output Data", takefocus = 0)
-        self.buttonReset.pack(side=tk.LEFT)
+        self.buttonOutput = ttk.Button(self.buttonsFrame, text="Output Data", takefocus = 0)
+        self.buttonOutput.pack(side=tk.LEFT)
         self.buttonsFrame.grid(row=2, column=0)
         
         self.totalForce = ttk.Label(self, text="Total force: ")
@@ -153,15 +154,26 @@ class PressureFrame(ttk.Frame):
         self.setup_gui()
         
     def setup_gui(self):
-        self.figure = plt.Figure(figsize=(5, 3.5))
-        t = np.arange(0, 3, .01)
-        self.ax = self.figure.add_subplot()
-        self.ax.plot(t, 2 * np.sin(2 * np.pi * t))
-        self.ax.set_title("Pressure Distribution")
+        self.figure, self.ax = plt.subplots()
+        self.setup_plot()
         
         self.canvas = FigureCanvasTkAgg(self.figure, master=self)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+    
+    def setup_plot(self):
+        self.ax.set_title("Pressure distribution")
+        self.ax.set_xlabel("x")
+        self.ax.set_ylabel("Pressure (kPa)")
+        self.ax.legend()
+    
+    def update_plot(self, xmid, pd):
+        self.ax.clear()
+        mid = int(np.ceil(len(xmid)/2))
+        self.ax.plot(xmid[mid:], pd[mid:], "r", label="Under aerofoil pressure", linewidth=1)
+        self.ax.plot(xmid[0:mid], pd[0:mid], "g", label="Above aerofoil pressure", linewidth=1)
+        self.setup_plot()
+        self.canvas.draw()
 
 class AerofoilFrame(ttk.Frame):
     """Aerofoil profile graph at bottom"""
@@ -180,18 +192,18 @@ class AerofoilFrame(ttk.Frame):
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
     
+    def setup_plot(self):
+        self.ax.set_title("Aerofoil design")
+        self.ax.set_xlabel("x")
+        self.ax.set_ylabel("y")
+        self.ax.legend()
+    
     def update_plot(self, xa, ya, xc, yc):
         self.ax.clear()
         self.ax.plot(xa, ya, "b", label="Aerofoil surface", linewidth=1)
         self.ax.plot(xc, yc, "r", label="Mean camber line", linewidth=1)
         self.setup_plot()
         self.canvas.draw()
-    
-    def setup_plot(self):
-        self.ax.set_title("Aerofoil Design")
-        self.ax.set_xlabel("x")
-        self.ax.set_ylabel("y")
-        self.ax.legend()
 
 def lift(chord, thickness, camber, camberposition, angleofattack, velocity):
     """
@@ -222,7 +234,7 @@ def lift(chord, thickness, camber, camberposition, angleofattack, velocity):
     N = 51                      # Number of grid points
     x1 = np.linspace(0,pc,N)    # Set up grid between start and m
     x2 = np.linspace(pc,c,N)    # Set up grid between m and end
-    x2 = x2[2:]                 # Delete overlapping points
+    x2 = x2[1:]                 # Delete overlapping points
     
     # Calculate camber line
     yc1 = m*x1/p**2.*(2*p-x1/c)
@@ -255,68 +267,64 @@ def lift(chord, thickness, camber, camberposition, angleofattack, velocity):
     y = np.concatenate([ya[0:2*N-1], ya[2*N:]])  # Remove overlap
     
     ## Calculate pressure distribution
-    # n = len(x) - 1
-    # a = np.zeros([n + 1, n + 1]);
-    #
-    # # Segment length
-    # r = np.sqrt(
-    #     (x[1:] - x[0:-1])**2
-    #   + (y[1:]-y[0:-1])**2
-    # )
-    #
-    # for j in range (0, n):
-    #     a[j, n] = 1
-    #     for i in range(0, n):
-    #         if i == j:
-    #             a[i, i] = r[i] / (2*np.pi) * (np.log(0.5*r[i]) - 1)
-    #         else:
-    #             xm1 = 0.5 * (x[j] + x[j+1])    # Segment x midpoint
-    #             ym1 = 0.5 * (y[j] + y[j+1])    # Segment y midpoint
-    #             dx = (x[i+1] - x[i]) / r[i]    # Rate of change of x over segment
-    #             dy = (y[i+1] - y[i]) / r[i]    # Rate of change of y over segment
-    #
-    #             t1 = x[i] - xm1
-    #             t2 = y[i] - ym1
-    #             t3 = x[i+1] - xm1
-    #             t7 = y[i+1] - ym1
-    #             t4 = t1 * dx + t2 * dy
-    #             t5 = t3 * dx + t7 * dy
-    #             t6 = t2 * dx - t1 * dy
-    #             t1 = t5 * np.log(t5**2 + t6**2) - t4 * np.log(t4**2 + t6**2)
-    #             t2 = np.arctan2(t6,t4) - np.arctan2(t6,t5)
-    #
-    #             a[j, i] = (0.5*t1-t5+t4+t6*t2) / (2*np.pi)    # Influence coefficient matrix
-    #
-    #     a[n, 0] = 1
-    #     a[n, n-1] = 1
-    #
-    # print(a)
-    # print(a.shape)
-    #
-    # xmid = 0.5 * (x[0:-1] + x[1:]).transpose()    # Midpoint values of x
-    # ymid = 0.5 * (y[0:-1] + y[1:]).transpose()    # Midpoint values of y
-    # rhs = np.array([[ymid * np.cos(aoa) - xmid * np.sin(aoa)], [0]])  # Right hand side of matrix
-    # gamma = np.linalg.solve(a, rhs)                                   # Solve linear system
-    # cp = 1 - gamma[0:-1]**2                       # Calculate pressure coefficient
-    # p = cp*0.5*rhoinf*vinf^2+pinf                 # Solve for pressure distribution
-    # Ll = 0
-    # Lu = 0
-    #
-    # for i in range(0, 99):
-    #     Lu = Lu + 0.5 * (xmid[i+1+100] - xmid[i+100]) * (p[i+100] + p[i+1+100])
-    #     Ll = Ll + 0.5 * (xmid[i] - xmid[i+1]) * (p[i] + p[i+1])
-    #
-    # Lift = Lu - Ll
-    # Lift = Lift * 1000
-    #
-    # # Rescale to start at 0
-    # xa = xa + c/2
-    # xc = xc + c/2
-    # xmid = xmid + c/2
+    n = len(x) - 1
+    a = np.zeros([n+1, n+1]);
     
-    xmid = 0
-    p = 0
-    Lift = 0
+    # Segment length
+    r = np.sqrt(
+        (x[1:] - x[0:-1])**2
+      + (y[1:]-y[0:-1])**2
+    )
+    
+    for j in range (0, n):
+        a[j, n] = 1
+        for i in range(0, n):
+            if i == j:
+                a[i, i] = r[i] / (2*np.pi) * (np.log(0.5*r[i]) - 1)
+            else:
+                xm1 = 0.5 * (x[j] + x[j+1])    # Segment x midpoint
+                ym1 = 0.5 * (y[j] + y[j+1])    # Segment y midpoint
+                dx = (x[i+1] - x[i]) / r[i]    # Rate of change of x over segment
+                dy = (y[i+1] - y[i]) / r[i]    # Rate of change of y over segment
+    
+                t1 = x[i] - xm1
+                t2 = y[i] - ym1
+                t3 = x[i+1] - xm1
+                t7 = y[i+1] - ym1
+                t4 = t1 * dx + t2 * dy
+                t5 = t3 * dx + t7 * dy
+                t6 = t2 * dx - t1 * dy
+                t1 = t5 * np.log(t5**2 + t6**2) - t4 * np.log(t4**2 + t6**2)
+                t2 = np.arctan2(t6,t4) - np.arctan2(t6,t5)
+    
+                a[j, i] = (0.5*t1-t5+t4+t6*t2) / (2*np.pi)    # Influence coefficient matrix
+    
+        a[n, 0] = 1
+        a[n, n-1] = 1
+    
+    # print(a)
+    
+    xmid = 0.5 * (x[0:-1] + x[1:]).transpose()    # Midpoint values of x
+    ymid = 0.5 * (y[0:-1] + y[1:]).transpose()    # Midpoint values of y
+    rhs = ymid * np.cos(aoa) - xmid * np.sin(aoa) # Right hand side of matrix
+    rhs = np.append(rhs, 0)
+    gamma = np.linalg.solve(a, rhs)                                   # Solve linear system
+    cp = 1 - gamma[0:-1]**2                       # Calculate pressure coefficient
+    p = cp*0.5*rhoinf*vinf**2+pinf                 # Solve for pressure distribution
+    Ll = 0
+    Lu = 0
+    
+    for i in range(0, 99):
+        Lu = Lu + 0.5 * (xmid[i+1+100] - xmid[i+100]) * (p[i+100] + p[i+1+100])
+        Ll = Ll + 0.5 * (xmid[i] - xmid[i+1]) * (p[i] + p[i+1])
+    
+    Lift = Lu - Ll
+    Lift = Lift * 1000
+    
+    # Rescale to start at 0
+    xa = xa + c/2
+    xc = xc + c/2
+    xmid = xmid + c/2
     
     return (xa, ya, xc, yc, xmid, p, Lift)
 
@@ -326,7 +334,6 @@ if __name__ == "__main__":
     root.title("Aerofoil GUI")
     root.geometry('800x600')
     root.minsize(800, 600)
-    root.maxsize(800, 600)
 
     # Create main frame
     mainFrame = MainFrame(root)
