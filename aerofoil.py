@@ -16,10 +16,9 @@ distribution according to the input using a vortex panel method approach.
 """
 
 # TODO:
-# - Output data to CSV
 # - Polish GUI
 # - Test on Windows
-# - Total force
+# - Data validation
 
 import tkinter as tk
 from tkinter import ttk
@@ -72,6 +71,9 @@ class MainFrame(ttk.Frame):
         self.aerofoil.update_plot(xa, ya, xc, yc)
         self.pressure.update_plot(xmid, pd)
         
+        # Output total force
+        self.params.set_total_force(L)
+        
         # Save pressure for outputting
         self.xmid = xmid
         self.pd = pd
@@ -88,6 +90,9 @@ class MainFrame(ttk.Frame):
         self.params.fieldCamberPos.set_value(60)
         self.params.fieldAngleAttack.set_value(5)
         self.params.fieldVelocity.set_value(200)
+        self.params.set_total_force(None)
+        self.aerofoil.reset_plot()
+        self.pressure.reset_plot()
     
     def output(self):
         """Save pressure distribution to CSV
@@ -160,7 +165,7 @@ class ParametersFrame(ttk.Frame):
         self.buttonCalculate.pack(side=tk.LEFT)
         self.buttonReset = ttk.Button(self.buttonsFrame, text="Reset", state=tk.NORMAL, takefocus = 0, command=resetCallback)
         self.buttonReset.pack(side=tk.LEFT)
-        self.buttonOutput = ttk.Button(self.buttonsFrame, text="Output data", state=tk.DISABLED, takefocus = 0, command=outputCallback)
+        self.buttonOutput = ttk.Button(self.buttonsFrame, text="Save", state=tk.DISABLED, takefocus = 0, command=outputCallback)
         self.buttonOutput.pack(side=tk.LEFT)
         self.buttonsFrame.grid(row=2, column=0)
         
@@ -169,6 +174,14 @@ class ParametersFrame(ttk.Frame):
     
     def enable_output_button(self):
         self.buttonOutput["state"] = tk.NORMAL
+        
+    def set_total_force(self, newtons):
+        if newtons is None:
+            text = "Total force: "
+        else:
+            text = "Total force: " + "{:.0f}".format(newtons) + " N"
+        
+        self.totalForce["text"] = text
         
 class ParametersField(ttk.Frame):
     """A label, text field, and unit label"""
@@ -231,6 +244,11 @@ class PressureFrame(ttk.Frame):
         self.ax.plot(xmid[0:mid], pd[0:mid], "g", label="Above aerofoil pressure", linewidth=1)
         self.setup_plot()
         self.canvas.draw()
+    
+    def reset_plot(self):
+        self.ax.clear()
+        self.setup_plot()
+        self.canvas.draw()
 
 class AerofoilFrame(ttk.Frame):
     """Aerofoil profile graph at bottom"""
@@ -259,6 +277,11 @@ class AerofoilFrame(ttk.Frame):
         self.ax.clear()
         self.ax.plot(xa, ya, "b", label="Aerofoil surface", linewidth=1)
         self.ax.plot(xc, yc, "r", label="Mean camber line", linewidth=1)
+        self.setup_plot()
+        self.canvas.draw()
+    
+    def reset_plot(self):
+        self.ax.clear()
         self.setup_plot()
         self.canvas.draw()
 
@@ -358,8 +381,6 @@ def lift(chord, thickness, camber, camberposition, angleofattack, velocity):
     
         a[n, 0] = 1
         a[n, n-1] = 1
-    
-    # print(a)
     
     xmid = 0.5 * (x[0:-1] + x[1:]).transpose()    # Midpoint values of x
     ymid = 0.5 * (y[0:-1] + y[1:]).transpose()    # Midpoint values of y
