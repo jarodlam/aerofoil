@@ -4,7 +4,7 @@
 Authors:
 - Stuart Johnston, 2013: Developed initial MATLAB version
 - Joshua Smith, 2017: Revisions to MATLAB version
-- Jarod Lam, 2020: Ported to Python
+- Jarod Lam, 2021: Ported to Python
 Version: 2.0
 Copyright 2021 Queensland University of Technology
 
