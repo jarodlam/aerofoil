@@ -122,7 +122,7 @@ class MainFrame(ttk.Frame):
         
         # Write data
         ws.append(["x", "Under aerofoil pressure (kPa)", "x", "Above aerofoil pressure (kPa)"])
-        data = self.get_data_average()
+        data = self.get_data_interp()
         for row in data:
             ws.append(row.tolist())
         
@@ -130,6 +130,10 @@ class MainFrame(ttk.Frame):
         wb.save(filename=filepath)
     
     def get_data_full(self):
+        """Get all pressure values"""
+        # xa, pa: Above aerofoil pressure
+        # xu, pu: Under aerofoil pressure
+        
         mid = int(np.ceil(len(self.xmid)/2))
         xu, xa = self.xmid[mid:], np.flip(self.xmid[0:mid])
         pu, pa = self.pd[mid:], np.flip(self.pd[0:mid])
@@ -137,6 +141,8 @@ class MainFrame(ttk.Frame):
         return data
     
     def get_data_average(self):
+        """Get pressure values, averaged to 10 points"""
+        
         data_full = self.get_data_full()
         
         n = 10    # Number of data points
@@ -146,6 +152,26 @@ class MainFrame(ttk.Frame):
             data.append(np.mean(d, axis=0))
         
         data = np.array(data)
+        return data
+    
+    def get_data_interp(self):
+        """Get pressure values, linearly interpolated to 10 points"""
+        
+        xu, pu, xa, pa = np.transpose(self.get_data_full())
+        print(xu, pu)
+        
+        # Number of data points to interpolate
+        n = 10
+        
+        # x values to interpolate at
+        xu_interp = np.linspace(min(xu), max(xu), n)
+        xa_interp = np.linspace(min(xa), max(xa), n)
+        
+        # Interpolate y values
+        pu_interp = np.interp(xu_interp, xu, pu)
+        pa_interp = np.interp(xa_interp, xa, pa)
+        
+        data = np.transpose([xu_interp, pu_interp, xa_interp, pa_interp])
         return data
 
 class ParametersFrame(ttk.Frame):
@@ -175,11 +201,11 @@ class ParametersFrame(ttk.Frame):
         
         self.buttonsFrame = ttk.Frame(self)
         self.buttonCalculate = ttk.Button(self.buttonsFrame, text="Calculate", state=tk.NORMAL, default=tk.ACTIVE, takefocus=False, command=calculateCallback)
-        self.buttonCalculate.pack(side=tk.LEFT, pady=5, expand=True)
+        self.buttonCalculate.pack(side=tk.LEFT, padx=2, pady=5, expand=True, fill="x")
         self.buttonReset = ttk.Button(self.buttonsFrame, text="Reset", state=tk.NORMAL, takefocus = 0, command=resetCallback)
-        self.buttonReset.pack(side=tk.LEFT, pady=5, expand=True)
+        self.buttonReset.pack(side=tk.LEFT, padx=2, pady=5, expand=True, fill="x")
         self.buttonOutput = ttk.Button(self.buttonsFrame, text="Save", state=tk.DISABLED, takefocus = 0, command=outputCallback)
-        self.buttonOutput.pack(side=tk.LEFT, pady=5, expand=True)
+        self.buttonOutput.pack(side=tk.LEFT, padx=2, pady=5, expand=True, fill="x")
         self.buttonsFrame.grid(row=2, column=0, sticky="nsew")
         
         self.forceFrame = ttk.LabelFrame(self, text="Total force")
