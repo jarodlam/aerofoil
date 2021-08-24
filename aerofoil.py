@@ -131,8 +131,8 @@ class MainFrame(ttk.Frame):
     
     def get_data_full(self):
         mid = int(np.ceil(len(self.xmid)/2))
-        xu, xa = self.xmid[mid:], self.xmid[0:mid]
-        pu, pa = self.pd[mid:], self.pd[0:mid]
+        xu, xa = self.xmid[mid:], np.flip(self.xmid[0:mid])
+        pu, pa = self.pd[mid:], np.flip(self.pd[0:mid])
         data = np.transpose([xu, pu, xa, pa])
         return data
     
