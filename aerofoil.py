@@ -88,9 +88,9 @@ class MainFrame(ttk.Frame):
         """Reset all values to default state"""
         
         self.params.fieldChordLen.set_value(10)
-        self.params.fieldThickness.set_value(20)
-        self.params.fieldMaxCamber.set_value(20)
-        self.params.fieldCamberPos.set_value(60)
+        self.params.fieldThickness.set_value(12)
+        self.params.fieldMaxCamber.set_value(2)
+        self.params.fieldCamberPos.set_value(40)
         self.params.fieldAngleAttack.set_value(5)
         self.params.fieldVelocity.set_value(200)
         self.params.set_output_button_enable(False)
@@ -146,11 +146,11 @@ class ParametersFrame(ttk.Frame):
         self.fieldsFrame = ttk.LabelFrame(self, text="Parameters")
         self.fieldChordLen = ParametersField(self.fieldsFrame, "Chord length (0.01-100)", "m", 0.01, 100)
         self.fieldChordLen.pack(expand=True, pady=5)
-        self.fieldThickness = ParametersField(self.fieldsFrame, "Thickness (2-25)", "%", 2, 25)
+        self.fieldThickness = ParametersField(self.fieldsFrame, "Thickness (1-40)", "%", 1, 40)
         self.fieldThickness.pack(expand=True, pady=5)
-        self.fieldMaxCamber = ParametersField(self.fieldsFrame, "Maximum camber (0-25)", "%", 0, 25)
+        self.fieldMaxCamber = ParametersField(self.fieldsFrame, "Maximum camber (0-9.5)", "%", 0, 9.5)
         self.fieldMaxCamber.pack(expand=True, pady=5)
-        self.fieldCamberPos = ParametersField(self.fieldsFrame, "Camber position (0-100)", "%", 0, 100)
+        self.fieldCamberPos = ParametersField(self.fieldsFrame, "Camber position (0-90)", "%", 1, 90)
         self.fieldCamberPos.pack(expand=True, pady=5)
         self.fieldAngleAttack = ParametersField(self.fieldsFrame, "Angle of attack (0-10)", "°", 0, 10)
         self.fieldAngleAttack.pack(expand=True, pady=5)
@@ -199,28 +199,31 @@ class ParametersField(ttk.Frame):
         
         self.label = label
         self.unit = unit
-        self.setup_gui()
-        
         self.minVal = minVal
         self.maxVal = maxVal
+        
+        self.setup_gui()
     
     def setup_gui(self):
         self.s = ttk.Style()
-        self.styleName = self.label + ".TEntry"
+        self.styleName = self.label + ".TSpinbox"
         self.s.configure(self.styleName, background='white')
         
         self.label = ttk.Label(self, text=self.label, width=25)
         self.label.pack(side=tk.LEFT)
         
         vcmd = (self.register(self.validate), '%P')
-        self.entry = ttk.Entry(self, width=5, style=self.styleName, validate="key", validatecommand=vcmd)
+        self.entry = ttk.Spinbox(self, width=5, style=self.styleName, from_=self.minVal, to=self.maxVal, validate="key", validatecommand=vcmd)
         self.entry.pack(side=tk.LEFT)
         
         self.unit = ttk.Label(self, text=self.unit, width=5)
         self.unit.pack(side=tk.LEFT)
     
     def get_value(self):
-        return int(self.entry.get())
+        try:
+            return int(self.entry.get())
+        except ValueError:
+            return None
         
     def set_value(self, value):
         self.entry.delete(0, tk.END)
@@ -249,6 +252,10 @@ class ParametersField(ttk.Frame):
     def is_within_bounds(self, value=None):
         if value is None:
             value = self.get_value()
+        
+        if value is None or value == "":
+            return False
+        
         return value >= self.minVal and value <= self.maxVal
 
 class PressureFrame(ttk.Frame):
