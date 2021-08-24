@@ -16,7 +16,7 @@ distribution according to the input using a vortex panel method approach.
 
 Requires Tkinter, NumPy, Matplotlib, and PyInstaller
 
-To compile into a distributable executable, run:
+To package into a single executable, run:
 pyinstaller --onefile --windowed --icon icon.ico aerofoil.py
 """
 
@@ -124,14 +124,30 @@ class MainFrame(ttk.Frame):
             writer.writerow(["x", "Under aerofoil pressure (kPa)", "x", "Above aerofoil pressure (kPa)"])
             
             # Format data into columns
-            mid = int(np.ceil(len(self.xmid)/2))
-            xu, xa = self.xmid[mid:], self.xmid[0:mid]
-            pu, pa = self.pd[mid:], self.pd[0:mid]
-            data = np.transpose([xu, pu, xa, pa])
+            data = self.get_data_average()
+            #self.get_data_average()
             
             # Write data to CSV
             writer.writerows(data)
-            
+    
+    def get_data_full(self):
+        mid = int(np.ceil(len(self.xmid)/2))
+        xu, xa = self.xmid[mid:], self.xmid[0:mid]
+        pu, pa = self.pd[mid:], self.pd[0:mid]
+        data = np.transpose([xu, pu, xa, pa])
+        return data
+    
+    def get_data_average(self):
+        data_full = self.get_data_full()
+        
+        n = 10    # Number of data points
+        data_split = np.array_split(data_full, n)
+        data = []
+        for d in data_split:
+            data.append(np.mean(d, axis=0))
+        
+        data = np.array(data)
+        return data
 
 class ParametersFrame(ttk.Frame):
     """Parameters selection in top-left of window"""
@@ -144,22 +160,22 @@ class ParametersFrame(ttk.Frame):
          
     def setup_gui(self, calculateCallback, resetCallback, outputCallback):
         self.fieldsFrame = ttk.LabelFrame(self, text="Parameters")
-        self.fieldChordLen = ParametersField(self.fieldsFrame, "Chord length (0.01-100)", "m", 0.01, 100)
-        self.fieldChordLen.pack(expand=True, pady=5)
+        self.fieldChordLen = ParametersField(self.fieldsFrame, "Chord length (1-100)", "m", 1, 100)
+        self.fieldChordLen.pack(expand=True, padx=5, pady=5)
         self.fieldThickness = ParametersField(self.fieldsFrame, "Thickness (1-40)", "%", 1, 40)
-        self.fieldThickness.pack(expand=True, pady=5)
-        self.fieldMaxCamber = ParametersField(self.fieldsFrame, "Maximum camber (0-9.5)", "%", 0, 9.5)
-        self.fieldMaxCamber.pack(expand=True, pady=5)
-        self.fieldCamberPos = ParametersField(self.fieldsFrame, "Camber position (0-90)", "%", 1, 90)
-        self.fieldCamberPos.pack(expand=True, pady=5)
+        self.fieldThickness.pack(expand=True, padx=5, pady=5)
+        self.fieldMaxCamber = ParametersField(self.fieldsFrame, "Maximum camber (0-10)", "%", 0, 10)
+        self.fieldMaxCamber.pack(expand=True, padx=5, pady=5)
+        self.fieldCamberPos = ParametersField(self.fieldsFrame, "Camber position (1-90)", "%", 1, 90)
+        self.fieldCamberPos.pack(expand=True, padx=5, pady=5)
         self.fieldAngleAttack = ParametersField(self.fieldsFrame, "Angle of attack (0-10)", "°", 0, 10)
-        self.fieldAngleAttack.pack(expand=True, pady=5)
-        self.fieldVelocity = ParametersField(self.fieldsFrame, "Velocity (0.1-10000)", "km/h", 0.1, 10000)
-        self.fieldVelocity.pack(expand=True, pady=5)
+        self.fieldAngleAttack.pack(expand=True, padx=5, pady=5)
+        self.fieldVelocity = ParametersField(self.fieldsFrame, "Velocity (1-10000)", "km/h", 1, 10000)
+        self.fieldVelocity.pack(expand=True, padx=5, pady=5)
         self.fieldsFrame.grid(row=1, column=0, sticky=tk.NSEW)
         
         self.buttonsFrame = ttk.Frame(self)
-        self.buttonCalculate = ttk.Button(self.buttonsFrame, text="Calculate", state=tk.NORMAL, default=tk.ACTIVE, takefocus = 0, command=calculateCallback)
+        self.buttonCalculate = ttk.Button(self.buttonsFrame, text="Calculate", state=tk.NORMAL, default=tk.ACTIVE, takefocus=False, command=calculateCallback)
         self.buttonCalculate.pack(side=tk.LEFT, pady=5, expand=True)
         self.buttonReset = ttk.Button(self.buttonsFrame, text="Reset", state=tk.NORMAL, takefocus = 0, command=resetCallback)
         self.buttonReset.pack(side=tk.LEFT, pady=5, expand=True)
@@ -167,19 +183,22 @@ class ParametersFrame(ttk.Frame):
         self.buttonOutput.pack(side=tk.LEFT, pady=5, expand=True)
         self.buttonsFrame.grid(row=2, column=0, sticky="nsew")
         
-        self.totalForce = ttk.Label(self, text="Total force: ")
-        self.totalForce.grid(row=3, column=0, sticky="nsew", pady=5)
+        self.forceFrame = ttk.LabelFrame(self, text="Total force")
+        self.forceFrame.grid(row=3, column=0, sticky="nsew", pady=5)
+        self.totalForce = ttk.Entry(self.forceFrame, state="readonly", justify="right")
+        self.totalForce.pack(side=tk.LEFT, expand=True, fill="both", padx=(5,0), pady=5)
+        self.labelNewtons = ttk.Label(self.forceFrame, text="N", width=5)
+        self.labelNewtons.pack(side=tk.LEFT, padx=(0,5), pady=5)
     
     def set_output_button_enable(self, enable):
         self.buttonOutput["state"] = tk.NORMAL if enable else tk.DISABLED
         
     def set_total_force(self, newtons):
-        if newtons is None:
-            text = "Total force: "
-        else:
-            text = "Total force: " + "{:.0f}".format(newtons) + " N"
-        
-        self.totalForce["text"] = text
+        self.totalForce["state"] = "normal"
+        self.totalForce.delete(0, tk.END)
+        if newtons is not None:
+            self.totalForce.insert(tk.END, "{:.0f}".format(newtons))
+        self.totalForce["state"] = "readonly"
     
     def all_fields_are_valid(self):
         return \
