@@ -14,7 +14,7 @@ workshop.
 Calculates the shape of an NACA 4 series airfoil and the corresponding pressure 
 distribution according to the input using a vortex panel method approach. 
 
-Requires Tkinter, NumPy, Matplotlib, and PyInstaller
+Requires Tkinter, NumPy, Matplotlib, OpenPyXL and PyInstaller
 
 To package into a single executable, run:
 pyinstaller --onefile --windowed --icon icon.ico aerofoil.py
@@ -26,7 +26,7 @@ from tkinter import filedialog
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import csv
+from openpyxl import Workbook
 
 class MainFrame(ttk.Frame):
     """Master Tk frame"""
@@ -99,16 +99,16 @@ class MainFrame(ttk.Frame):
         self.pressure.reset_plot()
     
     def output(self):
-        """Save pressure distribution to CSV
+        """Save pressure distribution to Excel workbook
         Format is: x | upper pressure | x | lower pressure
         """
         
         # Open a "Save as" dialog box to get file name
         filepath = tk.filedialog.asksaveasfilename(
             confirmoverwrite=True,
-            defaultextension=".csv",
-            filetypes=[("CSV files", ".csv")],
-            initialfile="aerofoil.csv",
+            defaultextension=".xlsx",
+            filetypes=[("Excel workbook", ".xlsx")],
+            initialfile="aerofoil.xlsx",
             parent=self.master
         )
         
@@ -116,19 +116,18 @@ class MainFrame(ttk.Frame):
         if not filepath:
             return
         
-        # Open the file
-        with open(filepath, 'w', newline='') as csvfile:
-            writer = csv.writer(csvfile, dialect=csv.excel)
-            
-            # Write header
-            writer.writerow(["x", "Under aerofoil pressure (kPa)", "x", "Above aerofoil pressure (kPa)"])
-            
-            # Format data into columns
-            data = self.get_data_average()
-            #self.get_data_average()
-            
-            # Write data to CSV
-            writer.writerows(data)
+        # Set up Excell workbook
+        wb = Workbook()
+        ws = wb.active
+        
+        # Write data
+        ws.append(["x", "Under aerofoil pressure (kPa)", "x", "Above aerofoil pressure (kPa)"])
+        data = self.get_data_average()
+        for row in data:
+            ws.append(row.tolist())
+        
+        # Save the file
+        wb.save(filename=filepath)
     
     def get_data_full(self):
         mid = int(np.ceil(len(self.xmid)/2))
