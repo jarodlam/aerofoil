@@ -93,6 +93,7 @@ class MainFrame(ttk.Frame):
         self.params.fieldCamberPos.set_value(40)
         self.params.fieldAngleAttack.set_value(5)
         self.params.fieldVelocity.set_value(200)
+        self.params.fieldDataPoints.set_value(5)
         self.params.set_output_button_enable(False)
         self.params.set_total_force(None)
         self.aerofoil.reset_plot()
@@ -120,9 +121,16 @@ class MainFrame(ttk.Frame):
         wb = Workbook()
         ws = wb.active
         
+        # Number of points
+        n = self.params.fieldDataPoints.get_value()
+        
+        # Get data and append column of sequence numbers
+        data = self.get_data_interp(n)
+        N = np.array([np.arange(1, n+1)]).transpose()
+        data = np.concatenate((N, data), axis=1)
+        
         # Write data
-        ws.append(["x", "Under aerofoil pressure (kPa)", "x", "Above aerofoil pressure (kPa)"])
-        data = self.get_data_interp()
+        ws.append(["n", "x (m)", "Under aerofoil pressure (kPa)", "x (m)", "Above aerofoil pressure (kPa)"])
         for row in data:
             ws.append(row.tolist())
         
@@ -140,12 +148,11 @@ class MainFrame(ttk.Frame):
         data = np.transpose([xu, pu, xa, pa])
         return data
     
-    def get_data_average(self):
+    def get_data_average(self, n):
         """Get pressure values, averaged to 10 points"""
         
         data_full = self.get_data_full()
         
-        n = 10    # Number of data points
         data_split = np.array_split(data_full, n)
         data = []
         for d in data_split:
@@ -154,13 +161,10 @@ class MainFrame(ttk.Frame):
         data = np.array(data)
         return data
     
-    def get_data_interp(self):
+    def get_data_interp(self, n):
         """Get pressure values, linearly interpolated to 10 points"""
         
         xu, pu, xa, pa = np.transpose(self.get_data_full())
-        
-        # Number of data points to interpolate
-        n = 10
         
         # x values to interpolate at
         xu_interp = np.linspace(min(xu), max(xu), n)
@@ -184,35 +188,40 @@ class ParametersFrame(ttk.Frame):
          
     def setup_gui(self, calculateCallback, resetCallback, outputCallback):
         self.fieldsFrame = ttk.LabelFrame(self, text="Parameters")
+        self.fieldsFrame.grid(row=1, column=0, sticky=tk.NSEW, pady=5)
         self.fieldChordLen = ParametersField(self.fieldsFrame, "Chord length (1-100)", "m", 1, 100)
-        self.fieldChordLen.pack(expand=True, padx=5, pady=5)
+        self.fieldChordLen.pack(expand=True, fill="x",  padx=5, pady=5)
         self.fieldThickness = ParametersField(self.fieldsFrame, "Thickness (1-40)", "%", 1, 40)
-        self.fieldThickness.pack(expand=True, padx=5, pady=5)
+        self.fieldThickness.pack(expand=True, fill="x",  padx=5, pady=5)
         self.fieldMaxCamber = ParametersField(self.fieldsFrame, "Maximum camber (0-10)", "%", 0, 10)
-        self.fieldMaxCamber.pack(expand=True, padx=5, pady=5)
+        self.fieldMaxCamber.pack(expand=True, fill="x",  padx=5, pady=5)
         self.fieldCamberPos = ParametersField(self.fieldsFrame, "Camber position (1-90)", "%", 1, 90)
-        self.fieldCamberPos.pack(expand=True, padx=5, pady=5)
+        self.fieldCamberPos.pack(expand=True, fill="x",  padx=5, pady=5)
         self.fieldAngleAttack = ParametersField(self.fieldsFrame, "Angle of attack (0-10)", "°", 0, 10)
-        self.fieldAngleAttack.pack(expand=True, padx=5, pady=5)
+        self.fieldAngleAttack.pack(expand=True, fill="x",  padx=5, pady=5)
         self.fieldVelocity = ParametersField(self.fieldsFrame, "Velocity (1-10000)", "km/h", 1, 10000)
-        self.fieldVelocity.pack(expand=True, padx=5, pady=5)
-        self.fieldsFrame.grid(row=1, column=0, sticky=tk.NSEW)
-        
-        self.buttonsFrame = ttk.Frame(self)
-        self.buttonCalculate = ttk.Button(self.buttonsFrame, text="Calculate", state=tk.NORMAL, default=tk.ACTIVE, takefocus=False, command=calculateCallback)
-        self.buttonCalculate.pack(side=tk.LEFT, padx=2, pady=5, expand=True, fill="x")
-        self.buttonReset = ttk.Button(self.buttonsFrame, text="Reset", state=tk.NORMAL, takefocus = 0, command=resetCallback)
-        self.buttonReset.pack(side=tk.LEFT, padx=2, pady=5, expand=True, fill="x")
-        self.buttonOutput = ttk.Button(self.buttonsFrame, text="Save", state=tk.DISABLED, takefocus = 0, command=outputCallback)
-        self.buttonOutput.pack(side=tk.LEFT, padx=2, pady=5, expand=True, fill="x")
-        self.buttonsFrame.grid(row=2, column=0, sticky="nsew")
+        self.fieldVelocity.pack(expand=True, fill="x",  padx=5, pady=5)
         
         self.forceFrame = ttk.LabelFrame(self, text="Total force")
-        self.forceFrame.grid(row=3, column=0, sticky="nsew", pady=5)
+        self.forceFrame.grid(row=2, column=0, sticky="nsew", pady=5)
         self.totalForce = ttk.Entry(self.forceFrame, state="readonly", justify="right")
         self.totalForce.pack(side=tk.LEFT, expand=True, fill="both", padx=(5,0), pady=5)
         self.labelNewtons = ttk.Label(self.forceFrame, text="N", width=5)
         self.labelNewtons.pack(side=tk.LEFT, padx=(0,5), pady=5)
+        
+        self.exportFrame = ttk.LabelFrame(self, text="Export")
+        self.exportFrame.grid(row=3, column=0, sticky="nsew", pady=2)
+        self.fieldDataPoints = ParametersField(self.exportFrame, "No. data points (5-100)", "", 5, 100)
+        self.fieldDataPoints.pack(expand=True, fill="x", padx=5, pady=5)
+        
+        self.buttonsFrame = ttk.Frame(self)
+        self.buttonsFrame.grid(row=4, column=0, sticky="nsew")
+        self.buttonCalculate = ttk.Button(self.buttonsFrame, text="Calculate", state=tk.NORMAL, default=tk.ACTIVE, takefocus=False, command=calculateCallback)
+        self.buttonCalculate.pack(expand=True, fill="x", side=tk.LEFT, padx=(0,2), pady=5)
+        self.buttonReset = ttk.Button(self.buttonsFrame, text="Reset", state=tk.NORMAL, takefocus = 0, command=resetCallback)
+        self.buttonReset.pack(expand=True, fill="x", side=tk.LEFT, padx=2, pady=2)
+        self.buttonOutput = ttk.Button(self.buttonsFrame, text="Save", state=tk.DISABLED, takefocus = 0, command=outputCallback)
+        self.buttonOutput.pack(expand=True, fill="x", side=tk.LEFT, padx=(2,0), pady=2)
     
     def set_output_button_enable(self, enable):
         self.buttonOutput["state"] = tk.NORMAL if enable else tk.DISABLED
