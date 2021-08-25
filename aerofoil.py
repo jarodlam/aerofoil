@@ -158,7 +158,6 @@ class MainFrame(ttk.Frame):
         """Get pressure values, linearly interpolated to 10 points"""
         
         xu, pu, xa, pa = np.transpose(self.get_data_full())
-        print(xu, pu)
         
         # Number of data points to interpolate
         n = 10
