@@ -126,7 +126,7 @@ class MainFrame(ttk.Frame):
         
         # Get data and append column of sequence numbers
         data = self.get_data_interp(n)
-        N = np.array([np.arange(1, n+1)]).transpose()
+        N = np.array([np.arange(0, n)]).transpose()
         data = np.concatenate((N, data), axis=1)
         
         # Write data
